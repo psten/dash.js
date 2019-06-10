@@ -90,7 +90,9 @@ function ManifestLoader(config) {
     function createParser(data) {
         let parser = null;
         // Analyze manifest content to detect protocol and select appropriate parser
-        if (data.indexOf('SmoothStreamingMedia') > -1) {
+        if (typeof data === "object") { // create an JSON Parser if url / data is an object
+            return DashParser(context).create(); // would be nicer to create a JsonParser that extends DashParser
+        } else if (data.indexOf('SmoothStreamingMedia') > -1) {
             //do some business to transform it into a Dash Manifest
             if (mssHandler) {
                 parser = mssHandler.createMssParser();
@@ -104,12 +106,13 @@ function ManifestLoader(config) {
         }
     }
 
-    function load(url) {
+    function doLoad(url) {
+
         const request = new TextRequest(url, HTTPRequest.MPD_TYPE);
 
-        httpLoader.load({
+        httpLoader.load({ //DIFF3?
             request: request,
-            success: function (data, textStatus, responseURL) {
+            success: function(data, textStatus, responseURL) {
                 // Manage situations in which success is called after calling reset
                 if (!xlinkController) return;
 
@@ -164,7 +167,94 @@ function ManifestLoader(config) {
                             error: new DashJSError(
                                 Errors.MANIFEST_LOADER_PARSING_FAILURE_ERROR_CODE,
                                 Errors.MANIFEST_LOADER_PARSING_FAILURE_ERROR_MESSAGE + `${url}`
-                           )
+                            )
+                        }
+                    );
+                    return;
+                }
+
+                if (manifest) {
+                    manifest.url = actualUrl || url;
+                    if (!manifest.originalUrl) {
+                        manifest.originalUrl = manifest.url;
+                    }
+                    if (manifest.hasOwnProperty(Constants.LOCATION)) {
+                        baseUri = urlUtils.parseBaseUrl(manifest.Location_asArray[0]);
+                        logger.debug("BaseURI set by Location to: " + baseUri);
+                    }
+                    manifest.baseUri = baseUri;
+                    manifest.loadedTime = new Date();
+                    xlinkController.resolveManifestOnLoad(manifest);
+                } else {
+                    eventBus.trigger(
+                        Events.INTERNAL_MANIFEST_LOADED, {
+                            manifest: null,
+                            error: new DashJSError(
+                                Errors.MANIFEST_LOADER_PARSING_FAILURE_ERROR_CODE,
+                                Errors.MANIFEST_LOADER_PARSING_FAILURE_ERROR_MESSAGE + `${url}`
+                            )
+                        }
+                    );
+                }
+            },
+            error: function error(request, statusText, errorText) {
+                eventBus.trigger(
+                    Events.INTERNAL_MANIFEST_LOADED, {
+                        manifest: null,
+                        error: new DashJSError(
+                            Errors.MANIFEST_LOADER_LOADING_FAILURE_ERROR_CODE,
+                            Errors.MANIFEST_LOADER_LOADING_FAILURE_ERROR_MESSAGE + `${url}` + errorText
+                        )
+                    }
+                );
+            }
+        });
+    }
+
+    function doLoadObject(url, json) { //DIFF3
+        var request = new TextRequest(url, HTTPRequest.MPD_TYPE);
+        httpLoader.load({
+            request: request,
+            success: function success(data, textStatus, responseURL) {
+                console.debug("httpLoader.load success");
+                if (!xlinkController) return;
+                var actualUrl = undefined, baseUri = undefined, manifest = undefined;
+                if (responseURL && responseURL !== url) {
+                    baseUri = urlUtils.parseBaseUrl(responseURL);
+                    actualUrl = responseURL;
+                } else {
+                    if (urlUtils.isRelative(url)) {
+                        url = urlUtils.resolve(url, window.location.href);
+                    }
+                    baseUri = urlUtils.parseBaseUrl(url);
+                }
+                if (parser === null) {
+                    parser = createParser(data);
+                    console.debug("createParser");
+                }
+                if (parser === null) {
+                    eventBus.trigger(
+                        Events.INTERNAL_MANIFEST_LOADED, {
+                            manifest: null,
+                            error: new DashJSError(
+                                Errors.MANIFEST_LOADER_PARSING_FAILURE_ERROR_CODE,
+                                Errors.MANIFEST_LOADER_PARSING_FAILURE_ERROR_MESSAGE + `${url}`
+                            )
+                        }
+                    );
+                    return;
+                }
+
+                try {
+                    manifest = parser.parseJSON(json);
+                } catch (e) {
+                    eventBus.trigger(
+                        Events.INTERNAL_MANIFEST_LOADED, {
+                            manifest: null,
+                            error: new DashJSError(
+                                Errors.MANIFEST_LOADER_PARSING_FAILURE_ERROR_CODE,
+                                Errors.MANIFEST_LOADER_PARSING_FAILURE_ERROR_MESSAGE + `${url}`
+                            )
                         }
                     );
                     return;
@@ -200,7 +290,7 @@ function ManifestLoader(config) {
                     );
                 }
             },
-            error: function (request, statusText, errorText) {
+            error: function(request, statusText, errorText) {
                 eventBus.trigger(
                     Events.INTERNAL_MANIFEST_LOADED, {
                         manifest: null,
@@ -233,7 +323,13 @@ function ManifestLoader(config) {
     }
 
     instance = {
-        load: load,
+        load: function(url) {
+          if (typeof url === "string") {
+              doLoad.call(this, url);
+          } else if (typeof url === "object") {
+              doLoadObject.call(this, url[0], url[1]);
+          }
+        },
         reset: reset
     };
 

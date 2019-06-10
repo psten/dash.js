@@ -173,7 +173,7 @@ function StreamController() {
      * Called when current playback position is changed.
      * Used to determine the time current stream is finished and we should switch to the next stream.
      */
-    function onPlaybackTimeUpdated(/*e*/) {
+    function onPlaybackTimeUpdated( /*e*/ ) {
         if (isTrackTypePresent(Constants.VIDEO)) {
             const playbackQuality = videoModel.getPlaybackQuality();
             if (playbackQuality) {
@@ -182,7 +182,7 @@ function StreamController() {
         }
     }
 
-    function onWallclockTimeUpdated(/*e*/) {
+    function onWallclockTimeUpdated( /*e*/ ) {
         if (!settings.get().streaming.jumpGaps || getActiveStreamProcessors() === 0 ||
             playbackController.isSeeking() || isPaused || isStreamSwitchingInProgress ||
             hasMediaError || hasInitialisationError) {
@@ -208,7 +208,7 @@ function StreamController() {
 
         // Find out what is the right time position to jump to taking
         // into account state of buffer
-        for (let i = 0; i < streamProcessors.length; i ++) {
+        for (let i = 0; i < streamProcessors.length; i++) {
             const mediaBuffer = streamProcessors[i].getBuffer();
             const ranges = mediaBuffer.getAllBufferRanges();
             let nextRangeStartTime;
@@ -241,7 +241,9 @@ function StreamController() {
         if (seekToPosition > 0) {
             if (!isNaN(timeToStreamEnd) && seekToPosition >= time + timeToStreamEnd) {
                 logger.info('Jumping media gap (discontinuity) at time ', time, '. Jumping to end of the stream');
-                eventBus.trigger(Events.PLAYBACK_ENDED, {'isLast': getActiveStreamInfo().isLast});
+                eventBus.trigger(Events.PLAYBACK_ENDED, {
+                    'isLast': getActiveStreamInfo().isLast
+                });
             } else {
                 logger.info('Jumping media gap (discontinuity) at time ', time, '. Jumping to time position', seekToPosition);
                 playbackController.seek(seekToPosition, true, true);
@@ -262,7 +264,7 @@ function StreamController() {
             stopPreloadTimer();
         }
 
-        if ( seekingStream === activeStream && preloading ) {
+        if (seekingStream === activeStream && preloading) {
             // Seeking to the current period was requested while preloading the next one, deactivate preloading one
             preloading.deactivate(true);
         }
@@ -324,9 +326,13 @@ function StreamController() {
                 const delayPlaybackEnded = timeToEnd > 0 ? timeToEnd * 1000 : 0;
                 const preloadDelay = delayPlaybackEnded < 2000 ? delayPlaybackEnded / 4 : delayPlaybackEnded - 2000;
                 logger.debug('[toggleEndPeriodTimer] Going to fire preload in', preloadDelay, 'milliseconds');
-                preloadTimerId = setTimeout(onStreamCanLoadNext,  preloadDelay);
-                logger.debug('[toggleEndPeriodTimer] start-up of timer to notify PLAYBACK_ENDED event. It will be triggered in',delayPlaybackEnded, 'milliseconds');
-                playbackEndedTimerId = setTimeout(function () {eventBus.trigger(Events.PLAYBACK_ENDED, {'isLast': getActiveStreamInfo().isLast});}, delayPlaybackEnded);
+                preloadTimerId = setTimeout(onStreamCanLoadNext, preloadDelay);
+                logger.debug('[toggleEndPeriodTimer] start-up of timer to notify PLAYBACK_ENDED event. It will be triggered in', delayPlaybackEnded, 'milliseconds');
+                playbackEndedTimerId = setTimeout(function() {
+                    eventBus.trigger(Events.PLAYBACK_ENDED, {
+                        'isLast': getActiveStreamInfo().isLast
+                    });
+                }, delayPlaybackEnded);
             }
         }
     }
@@ -453,8 +459,7 @@ function StreamController() {
             audioTrackDetected = undefined;
             videoTrackDetected = undefined;
             switchStream(activeStream, nextStream, NaN);
-        }
-        else {
+        } else {
             logger.debug('StreamController no next stream found');
         }
         flushPlaylistMetrics(nextStream ? PlayListTrace.END_OF_PERIOD_STOP_REASON : PlayListTrace.END_OF_CONTENT_STOP_REASON);
@@ -467,7 +472,7 @@ function StreamController() {
             const start = getActiveStreamInfo().start;
             const duration = getActiveStreamInfo().duration;
 
-            return streams.filter(function (stream) {
+            return streams.filter(function(stream) {
                 return (stream.getStreamInfo().start === parseFloat((start + duration).toFixed(5)));
             })[0];
         }
@@ -486,7 +491,7 @@ function StreamController() {
         if (oldStream) {
             oldStream.stopEventController();
             useSmoothPeriodTransition = (activeStream.isProtectionCompatible(newStream) &&
-                (supportsChangeType || activeStream.isMediaCodecCompatible(newStream))) &&
+                    (supportsChangeType || activeStream.isMediaCodecCompatible(newStream))) &&
                 !seekTime || newStream.getPreloaded();
             oldStream.deactivate(useSmoothPeriodTransition);
         }
@@ -715,7 +720,11 @@ function StreamController() {
                 useCalculatedLiveEdgeTime = adapter.getUseCalculatedLiveEdgeTimeForMediaInfo(mediaInfo);
                 if (useCalculatedLiveEdgeTime) {
                     logger.debug('SegmentTimeline detected using calculated Live Edge Time');
-                    const s = { streaming: { useManifestDateHeaderTimeSource: false } };
+                    const s = {
+                        streaming: {
+                            useManifestDateHeaderTimeSource: false
+                        }
+                    };
                     settings.update(s);
                 }
             }
@@ -725,7 +734,7 @@ function StreamController() {
             const isHTTPS = urlUtils.isHTTPS(e.manifest.url);
 
             //If https is detected on manifest then lets apply that protocol to only the default time source(s). In the future we may find the need to apply this to more then just default so left code at this level instead of in MediaPlayer.
-            allUTCTimingSources.forEach(function (item) {
+            allUTCTimingSources.forEach(function(item) {
                 if (item.value.replace(/.*?:\/\//g, '') === mediaPlayerModel.getDefaultUtcTimingSource().value.replace(/.*?:\/\//g, '')) {
                     item.value = item.value.replace(isHTTPS ? new RegExp(/^(http:)?\/\//i) : new RegExp(/^(https:)?\/\//i), isHTTPS ? 'https://' : 'http://');
                     logger.debug('Matching default timing source protocol to manifest protocol: ', item.value);
@@ -753,10 +762,10 @@ function StreamController() {
         }
 
         switch (trackType) {
-            case Constants.VIDEO :
+            case Constants.VIDEO:
                 isTrackTypeDetected = videoTrackDetected;
                 break;
-            case Constants.AUDIO :
+            case Constants.AUDIO:
                 isTrackTypeDetected = audioTrackDetected;
                 break;
         }
@@ -839,7 +848,7 @@ function StreamController() {
     }
 
     function getStreamById(id) {
-        return streams.filter(function (item) {
+        return streams.filter(function(item) {
             return item.getId() === id;
         })[0];
     }
@@ -865,7 +874,12 @@ function StreamController() {
 
     function loadWithManifest(manifest) {
         checkInitialize();
-        manifestUpdater.setManifest(manifest);
+        //manifestUpdater.setManifest(manifest);
+        if (manifest[0].indexOf("http") > -1) {
+            manifestLoader.load(manifest);
+        } else {
+            manifestUpdater.setManifest(manifest); //DIFF5
+        }
     }
 
     function onManifestValidityChanged(e) {

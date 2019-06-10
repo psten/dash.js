@@ -47,7 +47,7 @@ export function unescapeDollarsInTemplate(url) {
 }
 
 export function replaceIDForTemplate(url, value) {
-    if (!value || !url || url.indexOf('$RepresentationID$') === -1) { return url; }
+    if (value === null || url === null || url.indexOf('$RepresentationID$') === -1) { return url; }
     let v = value.toString();
     return url.split('$RepresentationID$').join(v);
 }

@@ -85,7 +85,7 @@ function HTTPLoader(cfg) {
         };
     }
 
-    function internalLoad(config, remainingAttempts) {
+    function internalLoad(config, remainingAttempts) { //DIFF3?
         const request = config.request;
         const traces = [];
         let firstProgress = true;
@@ -276,7 +276,7 @@ function HTTPLoader(cfg) {
      * @memberof module:HTTPLoader
      * @instance
      */
-    function load(config) {
+    function load(config) { //DIFF3?
         if (config.request) {
             internalLoad(
                 config,

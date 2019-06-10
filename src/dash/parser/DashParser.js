@@ -55,18 +55,18 @@ function DashParser() {
             new DurationMatcher(),
             new DateTimeMatcher(),
             new NumericMatcher(),
-            new StringMatcher()   // last in list to take precedence over NumericMatcher
+            new StringMatcher() // last in list to take precedence over NumericMatcher
         ];
 
         converter = new X2JS({
-            escapeMode:         false,
-            attributePrefix:    '',
-            arrayAccessForm:    'property',
-            emptyNodeForm:      'object',
-            stripWhitespaces:   false,
+            escapeMode: false,
+            attributePrefix: '',
+            arrayAccessForm: 'property',
+            emptyNodeForm: 'object',
+            stripWhitespaces: false,
             enableToStringFunc: false,
-            ignoreRoot:         true,
-            matchers:           matchers
+            ignoreRoot: true,
+            matchers: matchers
         });
 
         objectIron = ObjectIron(context).create({
@@ -102,8 +102,60 @@ function DashParser() {
         return manifest;
     }
 
+    function parseJSON(data) { //, baseUrl, xlinkController) { //DIFF1: TODO JSON Parser - object extension of the MPD-Parser? in 3.x.x the only arg is "data"?
+        let manifest;
+        const startTime = window.performance.now();
+
+        if (manifest = data, !manifest) {
+            throw new Error('parsing the manifest failed');
+        }
+        const jsonTime = window.performance.now();
+
+        // cleaning up of the url still necessary? parse() above looks alot simpler than parse() in 1.5.1
+        //if (!manifest.hasOwnProperty("BaseURL")) {
+        //this.log("Setting baseURL: " + baseUrl);
+        //    manifest.BaseURL = baseUrl;
+        //} else {
+
+        // Setting manifest's BaseURL to the first BaseURL
+        manifest.BaseURL = manifest.BaseURL_asArray[0];
+
+        if (manifest.BaseURL.toString().indexOf("www") === 0) {
+            manifest.BaseURL = "http://" + manifest.BaseURL;
+        }
+
+        if (manifest.BaseURL.toString().slice(-1) !== "/") {
+            manifest.BaseURL = manifest.BaseURL + "/";
+        }
+
+        //if (manifest.BaseURL.toString().indexOf("http") !== 0) { //is there a baseUrl defined somewhere?
+        //    manifest.BaseURL = baseUrl + manifest.BaseURL;
+        //}
+        //}
+
+        // already implemented in ManifestLoader.load()
+        //if(manifest.hasOwnProperty("Location")){
+        // for now, do not support multiple Locations -
+        // just set Location to the first Location.
+        //  manifest.Location = manifest.Location_asArray[0]
+        //}
+        //this.log("Flatten manifest properties.");
+        objectIron.run(manifest);
+
+        // also done in ManifestLoader.load()
+        //xlinkController.setMatchers(matchers);
+        //xlinkController.setIron(objectIron);
+
+
+        const ironedTime = window.performance.now();
+        logger.info('Parsing complete: ( xml2json: ' + (jsonTime - startTime).toPrecision(3) + 'ms, objectiron: ' + (ironedTime - jsonTime).toPrecision(3) + 'ms, total: ' + ((ironedTime - startTime) / 1000).toPrecision(3) + 's)');
+
+        return manifest;
+    }
+
     instance = {
         parse: parse,
+        parseJSON: parseJSON, //DIFF2
         getMatchers: getMatchers,
         getIron: getIron
     };
