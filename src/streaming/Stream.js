@@ -219,6 +219,8 @@ function Stream(config) {
 
     function reset() {
 
+        stopEventController();
+
         if (playbackController) {
             playbackController.pause();
         }
@@ -306,11 +308,11 @@ function Stream(config) {
     }
 
     function isMediaSupported(mediaInfo) {
-        const type = mediaInfo.type;
+        const type = mediaInfo ? mediaInfo.type : null;
         let codec,
             msg;
 
-        if (type === Constants.MUXED && mediaInfo) {
+        if (type === Constants.MUXED) {
             msg = 'Multiplexed representations are intentionally not supported, as they are not compliant with the DASH-AVC/264 guidelines';
             logger.fatal(msg);
             errHandler.manifestError(msg, 'multiplexedrep', manifestModel.getValue());
@@ -338,16 +340,16 @@ function Stream(config) {
 
     function onCurrentTrackChanged(e) {
         if (e.newMediaInfo.streamInfo.id !== streamInfo.id) return;
+        let mediaInfo = e.newMediaInfo;
+        let manifest = manifestModel.getValue();
+
+        adapter.setCurrentMediaInfo(streamInfo.id, mediaInfo.type, mediaInfo);
 
         let processor = getProcessorForMediaInfo(e.newMediaInfo);
         if (!processor) return;
 
         let currentTime = playbackController.getTime();
         logger.info('Stream -  Process track changed at current time ' + currentTime);
-        let mediaInfo = e.newMediaInfo;
-        let manifest = manifestModel.getValue();
-
-        adapter.setCurrentMediaInfo(streamInfo.id, mediaInfo.type, mediaInfo);
 
         logger.debug('Stream -  Update stream controller');
         if (manifest.refreshManifestOnSwitchTrack) {
@@ -370,8 +372,8 @@ function Stream(config) {
 
     function createStreamProcessor(mediaInfo, allMediaForType, mediaSource, optionalSettings) {
         let streamProcessor = StreamProcessor(context).create({
-            type: mediaInfo.type,
-            mimeType: mediaInfo.mimeType,
+            type: mediaInfo ? mediaInfo.type : null,
+            mimeType: mediaInfo ? mediaInfo.mimeType : null,
             timelineConverter: timelineConverter,
             adapter: adapter,
             manifestModel: manifestModel,
@@ -403,7 +405,7 @@ function Stream(config) {
             return;
         }
 
-        if ((mediaInfo.type === Constants.TEXT || mediaInfo.type === Constants.FRAGMENTED_TEXT)) {
+        if (mediaInfo && (mediaInfo.type === Constants.TEXT || mediaInfo.type === Constants.FRAGMENTED_TEXT)) {
             let idx;
             for (let i = 0; i < allMediaForType.length; i++) {
                 if (allMediaForType[i].index === mediaInfo.index) {
@@ -503,7 +505,7 @@ function Stream(config) {
         filterCodecs(Constants.VIDEO);
         filterCodecs(Constants.AUDIO);
 
-        if (element === null || (element && (/^VIDEO$/i).test(element.nodeName))) {
+        if (!element || (element && (/^VIDEO$/i).test(element.nodeName))) {
             initializeMediaForType(Constants.VIDEO, mediaSource);
         }
         initializeMediaForType(Constants.AUDIO, mediaSource);
@@ -621,7 +623,10 @@ function Stream(config) {
     function createBuffers(previousBuffers) {
         const buffers = {};
         for (let i = 0, ln = streamProcessors.length; i < ln; i++) {
-            buffers[streamProcessors[i].getType()] = streamProcessors[i].createBuffer(previousBuffers).getBuffer();
+            const buffer = streamProcessors[i].createBuffer(previousBuffers);
+            if (buffer) {
+                buffers[streamProcessors[i].getType()] = buffer.getBuffer();
+            }
         }
         return buffers;
     }
@@ -731,8 +736,8 @@ function Stream(config) {
         checkIfInitializationCompleted();
     }
 
-    function isMediaCodecCompatible(stream) {
-        return compareCodecs(stream, Constants.VIDEO) && compareCodecs(stream, Constants.AUDIO);
+    function isMediaCodecCompatible(newStream) {
+        return compareCodecs(newStream, Constants.VIDEO) && compareCodecs(newStream, Constants.AUDIO);
     }
 
     function isProtectionCompatible(stream) {
@@ -766,11 +771,11 @@ function Stream(config) {
         return true;
     }
 
-    function compareCodecs(stream, type) {
-        if (!stream) {
+    function compareCodecs(newStream, type) {
+        if (!newStream || !newStream.hasOwnProperty('getStreamInfo') ) {
             return false;
         }
-        const newStreamInfo = stream.getStreamInfo();
+        const newStreamInfo = newStream.getStreamInfo();
         const currentStreamInfo = getStreamInfo();
 
         if (!newStreamInfo || !currentStreamInfo) {

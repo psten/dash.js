@@ -395,7 +395,7 @@ function TextTracks() {
             return;
         }
 
-        if (!captionData || !Array.isArray(captionData.length)) {
+        if (!Array.isArray(captionData) || captionData.length === 0) {
             return;
         }
 
@@ -445,6 +445,7 @@ function TextTracks() {
                             if (divs[i].id === this.cueID) {
                                 logger.debug('Cue exit id:' + divs[i].id);
                                 captionContainer.removeChild(divs[i]);
+                                --i;
                             }
                         }
                     }
