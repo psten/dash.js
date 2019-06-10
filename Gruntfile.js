@@ -27,6 +27,10 @@ module.exports = function (grunt) {
         uglify: {
             options: {
                 banner: '/*! v<%= pkg.version %>-<%= githash.dist.short %>, <%= grunt.template.today("isoUtcDateTime") %> */',
+                beautify: true,
+                mangle: false,
+                compress: false
+                /*
                 sourceMap: true,
                 sourceMapIncludeSources: true,
                 sourceMapRoot: './src/',
@@ -42,6 +46,7 @@ module.exports = function (grunt) {
                     join_vars: true,
                     drop_console: false
                 }
+                */
             },
 
             build_core: {
